@@ -138,9 +138,9 @@ class ParaphraseEvaluator:
         if 'ngram_novelty' in evaluated_metric:
             ngram_novelty = self.calculate_ngram_novelty(source, paraphrase, n=2)
             scores['ngram_novelty'] = ngram_novelty
-        if 'jaccard_similarity' in evaluated_metric:
-            jacard_similarity = self.jaccard_similarity(source, paraphrase)
-            scores['jaccard_similarity'] = jacard_similarity
+        if 'jacquard_similarity' in evaluated_metric:
+            jacquard_similarity = self.jaccard_similarity(source, paraphrase)
+            scores['jacquard_similarity'] = jacquard_similarity
         return scores
 
     def evaluate_batch(self,
@@ -152,7 +152,7 @@ class ParaphraseEvaluator:
                                          'rouge',
                                          'edit_distance',
                                          'ngram_novelty',
-                                         'jacard_similarity'],
+                                         'jacquard_similarity'],
                        verbose=True):
         """Evaluate a batch of paraphrases"""
         results = []
