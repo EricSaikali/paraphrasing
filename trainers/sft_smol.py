@@ -117,5 +117,5 @@ def train_paraphraser(output_dir="paraphrase_model_output"):
 
 
 if __name__ == "__main__":
-    out_dir = "storage/SmolLM-135M-Quora-v1"
+    out_dir = "storage/SmolLM-135M-Quora-v2"
     train_paraphraser(output_dir=out_dir)
