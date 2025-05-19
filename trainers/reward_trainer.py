@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 from dataset.quora_dataset import QuoraDataset
 from mlp_logger import MLPLogger
@@ -49,17 +50,29 @@ def train_reward_model(
 
 def test_reward_model(reward_model: RewardModel, test_dataloader):
     reward_model.eval()
+    all_preds = []
+    all_labels = []
+
     with torch.no_grad():
-        num_test_samples = len(test_dataloader)
-        accuracy_sum = 0
-        total = 0
-        for questions1, questions2, labels in tqdm(test_dataloader, total=num_test_samples // reward_batch_size):
+        for questions1, questions2, labels in tqdm(test_dataloader):
             scores = reward_model(questions1, questions2)
-            predicted = scores.round(decimals=0).view(-1)
-            labels = labels.view(-1)
-            accuracy_sum += (predicted == labels).float().sum().item()
-            total += labels.size(0)
-    return accuracy_sum / total
+            predicted = scores.round(decimals=0).view(-1).cpu()
+            labels = labels.view(-1).cpu()
+
+            all_preds.extend(predicted.numpy())
+            all_labels.extend(labels.numpy())
+
+    accuracy = accuracy_score(all_labels, all_preds)
+    precision = precision_score(all_labels, all_preds, zero_division=0)
+    recall = recall_score(all_labels, all_preds, zero_division=0)
+    f1 = f1_score(all_labels, all_preds, zero_division=0)
+
+    return {
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1
+    }
 
 
 if __name__ == '__main__':
