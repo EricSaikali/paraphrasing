@@ -111,7 +111,7 @@ class ParaphraseEvaluator:
                                                                                'rouge',
                                                                                'edit_distance',
                                                                                'ngram_novelty',
-                                                                               'jacard_similarity']):
+                                                                               'jacquard_similarity']):
         """Evaluate a single paraphrase against the source and reference"""
         scores = {}
         if evaluated_metric is None or len(evaluated_metric) == 0:
