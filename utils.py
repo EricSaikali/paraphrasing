@@ -69,3 +69,8 @@ def display_paraphrasing_results(sources, references, paraphrases, displayed_num
         print(f"Source: {source}")
         print(f"Reference: {reference}")
         print(f"\n")
+
+
+def batchify(data, batch_size):
+    for i in range(0, len(data), batch_size):
+        yield data[i:i + batch_size]
