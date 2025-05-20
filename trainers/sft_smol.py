@@ -3,7 +3,7 @@ import torch
 import datasets
 from datasets import load_dataset, ClassLabel, DatasetDict
 from peft import LoraConfig
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModel, AutoModelForSeq2SeqLM
 from trl import SFTTrainer, SFTConfig, DataCollatorForCompletionOnlyLM
 import gc
 import time
@@ -16,7 +16,7 @@ QUORA_VALID_PROPORTION = 0.5
 EPSILON = 1e-6
 
 
-def load_paraphrase_dataset(tokenizer, max_train=5000, max_eval=500):
+def load_paraphrase_dataset(tokenizer, max_train=50000, max_eval=500):
     set_seed(SEED)
     quora_dataset = load_quora_dataset(SEED, QUORA_TEST_PROPORTION, QUORA_VALID_PROPORTION)
     dataset = quora_dataset.filter(lambda x: x["is_duplicate"] == 1)
@@ -46,15 +46,13 @@ def load_paraphrase_dataset(tokenizer, max_train=5000, max_eval=500):
 
 
 def train_paraphraser(output_dir="paraphrase_model_output"):
-    model_name = "HuggingFaceTB/SmolLM-135M" #"Qwen/Qwen2.5-0.5B"
+    model_name = "google/flan-t5-base"
 
     os.makedirs(output_dir, exist_ok=True)
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.pad_token = tokenizer.eos_token
-
-    model = AutoModelForCausalLM.from_pretrained(model_name)
-    model.resize_token_embeddings(len(tokenizer))
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 
     train_data, eval_data = load_paraphrase_dataset(tokenizer)
 
@@ -63,13 +61,10 @@ def train_paraphraser(output_dir="paraphrase_model_output"):
         lora_alpha=16,
         lora_dropout=0.05,
         bias="none",
-        task_type="CAUSAL_LM",
-        target_modules=["layers.29.self_attn.q_proj",
-                        "layers.29.self_attn.v_proj",
-                        "model.layers.29.mlp.up_proj",
-                        "model.layers.29.mlp.down_proj"]
-        # ["layers.23.self_attn.q_proj", "layers.23.self_attn.v_proj"]
-        # ["Wqkv", "fc1", "fc2" ] # ["Wqkv", "out_proj", "fc1", "fc2" ]
+        task_type="SEQ_2_SEQ_LM",
+        target_modules=["decoder.block.7.layer.1.EncDecAttention.q",
+                        "decoder.block.7.layer.0.SelfAttention.q",
+                        "decoder.block.7.layer.2.DenseReluDense.wo"]
     )
 
     sft_config = SFTConfig(
@@ -83,8 +78,8 @@ def train_paraphraser(output_dir="paraphrase_model_output"):
         eval_steps=250,
         num_train_epochs=3,
         learning_rate=3e-5,
-        bf16=torch.backends.mps.is_available(),
-        fp16=torch.cuda.is_available(),
+        #bf16=torch.backends.mps.is_available(),
+        #fp16=torch.cuda.is_available(),
         save_total_limit=2,
         load_best_model_at_end=True,
         metric_for_best_model="eval_loss",
@@ -117,5 +112,5 @@ def train_paraphraser(output_dir="paraphrase_model_output"):
 
 
 if __name__ == "__main__":
-    out_dir = "storage/SmolLM-135M-Quora-v2"
+    out_dir = "storage/flan-t5-base-Quora-v2"
     train_paraphraser(output_dir=out_dir)
