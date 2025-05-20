@@ -1,6 +1,8 @@
 import re
 
 import numpy as np
+from sentence_transformers import SentenceTransformer, util
+from nltk.metrics import edit_distance
 from tqdm import tqdm
 import evaluate
 
@@ -10,14 +12,15 @@ class ParaphraseEvaluator:
     Evaluates paraphrasing quality using multiple metrics:
     - Lexical: BLEU, METEOR, ROUGE
     - Semantic: Sentence embedding similarity
-    - Diversity: Edit distance, n-gram novelty
+    - Diversity: Edit distance, n-gram novelty, Jacquard Similarity
     - Fluency: Language model perplexity (if available)
     """
 
     def __init__(self):
         self.bleu_scorer = evaluate.load('bleu')
         self.rouge_scorer = evaluate.load('rouge')
-        self.metero_scorer = evaluate.load('meteor')
+        self.meteor_scorer = evaluate.load('meteor')
+        self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
 
     def preprocess_text(self, text):
         """Basic text preprocessing"""
@@ -40,39 +43,25 @@ class ParaphraseEvaluator:
         if isinstance(candidate, str):
             candidate = [candidate]
 
-        return self.metero_scorer.compute(predictions=candidate, references=reference)
+        return self.meteor_scorer.compute(predictions=candidate, references=reference)
 
     def calculate_rouge(self, reference, candidate):
         """Calculate ROUGE scores for a candidate against a reference"""
         return self.rouge_scorer.compute(predictions=[candidate], references=[reference])
 
+    def calculate_semantic_similarity(self, sentence1, sentence2):
+        """Compute cosine similarity between sentence embeddings"""
+        embeddings = self.embedder.encode([sentence1, sentence2])
+        similarity = util.cos_sim(embeddings[0], embeddings[1])
+        return similarity
+
     def calculate_edit_distance(self, source, paraphrase):
         """Calculate normalized word edit distance"""
         words1 = source.lower().split()
         words2 = paraphrase.lower().split()
-
-        # Create a matrix to store edit distances
-        dp = [[0 for _ in range(len(words2) + 1)] for _ in range(len(words1) + 1)]
-
-        # Initialize first row and column
-        for i in range(len(words1) + 1):
-            dp[i][0] = i
-        for j in range(len(words2) + 1):
-            dp[0][j] = j
-
-        # Fill the matrix
-        for i in range(1, len(words1) + 1):
-            for j in range(1, len(words2) + 1):
-                if words1[i - 1] == words2[j - 1]:
-                    dp[i][j] = dp[i - 1][j - 1]
-                else:
-                    dp[i][j] = 1 + min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
-
-        # Normalize by the length of the longer text
+        dist = edit_distance(words1, words2)
         max_len = max(len(words1), len(words2))
-        if max_len == 0:
-            return 0
-        return dp[len(words1)][len(words2)] / max_len
+        return dist / max_len if max_len > 0 else 0
 
     def jaccard_similarity(self, source, paraphrase):
         """Calculate Jaccard similarity between two texts (word overlap)"""
@@ -111,7 +100,8 @@ class ParaphraseEvaluator:
                                                                                'rouge',
                                                                                'edit_distance',
                                                                                'ngram_novelty',
-                                                                               'jacquard_similarity']):
+                                                                               'jacquard_similarity',
+                                                                               'semantic_similarity']):
         """Evaluate a single paraphrase against the source and reference"""
         scores = {}
         if evaluated_metric is None or len(evaluated_metric) == 0:
@@ -141,6 +131,9 @@ class ParaphraseEvaluator:
         if 'jacquard_similarity' in evaluated_metric:
             jacquard_similarity = self.jaccard_similarity(source, paraphrase)
             scores['jacquard_similarity'] = jacquard_similarity
+
+        if 'semantic_similarity' in evaluated_metric:
+            scores['semantic_similarity'] = self.calculate_semantic_similarity(source, paraphrase)
         return scores
 
     def evaluate_batch(self,
@@ -152,7 +145,8 @@ class ParaphraseEvaluator:
                                          'rouge',
                                          'edit_distance',
                                          'ngram_novelty',
-                                         'jacquard_similarity'],
+                                         'jacquard_similarity',
+                                         'semantic_similarity'],
                        verbose=True):
         """Evaluate a batch of paraphrases"""
         results = []
@@ -165,7 +159,6 @@ class ParaphraseEvaluator:
             eval_result = self.evaluate_single(source, reference, paraphrase, evaluated_metric)
             results.append(eval_result)
 
-        # Calculate average scores
         avg_scores = {metric: np.mean([r[metric] for r in results]) for metric in results[0].keys()}
 
         return results, avg_scores
