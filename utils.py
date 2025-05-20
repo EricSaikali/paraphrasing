@@ -25,11 +25,12 @@ def split_quora_questions(sentence):
 
 
 def load_quora_dataset(seed, test_proportion, validation_proportion):
-    dataset = load_dataset("quora-competitions/quora").map(split_quora_questions,
-                                                           remove_columns=['questions']).cast_column(
+    dataset = (load_dataset("quora-competitions/quora", trust_remote_code=True)
+    .map(split_quora_questions,
+         remove_columns=['questions']).cast_column(
         "is_duplicate",
         ClassLabel(names=["not_duplicate", "duplicate"])
-    )
+    ))
 
     train_testvalid_dataset = dataset['train'].train_test_split(test_size=test_proportion, seed=seed,
                                                                 stratify_by_column='is_duplicate')
