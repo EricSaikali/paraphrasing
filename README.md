@@ -1,7 +1,4 @@
-# paraphrasing
-
-
-# Paraphrasing Model Development
+# Paraphrasing
 
 ## Project Overview
 This repository contains my implementation of paraphrasing models using both a simple and a complex approach.    
