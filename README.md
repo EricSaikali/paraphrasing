@@ -3,7 +3,9 @@
 ## Project Overview
 This repository contains my implementation of paraphrasing models using both a simple and a complex approach.    
 The main objective is to develop models that can effectively paraphrase sentences while maintaining semantic meaning, and to explore methods for evaluating paraphrasing quality.    
-The core evaluation and reasoning of my work is detailed in the `paraphrasing.ipynb`.   
+
+**The core evaluation and reasoning of my work is detailed in the `paraphrasing.ipynb`.**   
+
 ## Dataset
 The project uses the **Quora Question Pairs dataset**, dataset of paraphrases.
 ## Approaches Implemented
