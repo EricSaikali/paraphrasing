@@ -34,7 +34,10 @@ class ParaphraseEvaluator:
 
     def calculate_bleu(self, reference, candidate):
         """Calculate BLEU score for a candidate against a reference"""
-        return self.bleu_scorer.compute(predictions=[candidate], references=[reference])
+        try:
+            return self.bleu_scorer.compute(predictions=[candidate], references=[reference])
+        except ZeroDivisionError:
+            return {'bleu': np.array(0.0)}
 
     def calculate_meteor(self, reference, candidate):
         """Calculate METEOR score for a candidate against a reference"""
@@ -126,7 +129,7 @@ class ParaphraseEvaluator:
             scores['edit_distance'] = edit_distance
 
         if 'ngram_novelty' in evaluated_metric:
-            ngram_novelty = self.calculate_ngram_novelty(source, paraphrase, n=2)
+            ngram_novelty = self.calculate_ngram_novelty(source, paraphrase, n=3)
             scores['ngram_novelty'] = ngram_novelty
         if 'jacquard_similarity' in evaluated_metric:
             jacquard_similarity = self.jaccard_similarity(source, paraphrase)
